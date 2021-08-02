@@ -4,6 +4,7 @@ https://gimon-sukkiri.jp/othello-reversi/
 https://ruby-de-free.net/wp/how-to-make-othello-program-using-python-1/
 https://ruby-de-free.net/wp/how-to-make-othello-program-using-python-0/
 https://qiita.com/sasaco/items/fdb9771c146cb877b183
+https://mojitoba.com/2020/01/10/python_type_error/
 
 オセロ通常
 ↓
@@ -47,103 +48,128 @@ size = 8
     
 class Board (object):
     
-    def __init__(self):#初期設定
+    #初期設定
+    def __init__(self):
         self.table = np.zeros((size,size))
         
         self.table[3][4] = self.table[4][3] = black #黒
         self.table[3][3] = self.table[4][4] = white #白
         self.table = self.table.astype(int)
-        
+        self.turn = 1 #n手目
         self.move = black #初手
-        print(self.table)
+        #print(self.table)
         
-    def change(self):#ターン変更　黒→白,白→黒
+    #ターン変更　黒→白,白→黒    
+    def change(self):
         self.move *=-1
     
-    def check_table_first(self,x,y):
+    #➀-1
+    def check_table_first(self,x,y):#機能してない
         if x == None or y == None:
             return False
         elif  0 <= x < size and 0 <= y < size:
             return True
         else:
             return False
-        
+    #➀-2   
     def check_table_second(self,x,y):#firstがTrueの時確認する　and条件
         if self.table[x][y] != 0:
             return False
         else:
             return True
-        
+    #➀-3    
     def check_table_third(self,x,y):
+        count = 0
         for dx in range(-1,2):
             for dy in range(-1,2):
-                print(F"self.table[{x + dx}][{y + dy}]>>{self.table[x + dx][y + dy]}")
+                #print(F"self.table[{x + dx}][{y + dy}]>>{self.table[x + dx][y + dy]}")
+                count += 1
                 if dx == dy == 0:
                     continue
-                elif self.check_table_first(self,x+dx,y+dy) == False:
-                    return False,dx,dy
-                elif self.table[x+dx][y+dy] == 0 :
+                elif self.check_table_first(x+dx,y+dy) == False:
+                    continue
+                elif self.table[x+dx][y+dy] == 0 :#reverse_judgeに持っていく
+                    if count == 9:
+                        return False
+                    continue
+                elif self.reverse_judge(x,y,dx,dy) == False:
                     continue
                 else:
-                    return self.reverse_judge(self,x,y,dx,dy)
-                    
+                    return True
+    #➀-3-judge             
     def reverse_judge(self,x,y,dx,dy):#座標に敵石があるか否か + その先に自身の石があるか否か
+        if self.check_table_first(x,y) == False:
+            return False
         length = 0
-        if self.table[ x + dx][ y + dy] == -self.move:#一方の石である時 true
-            while self.table[ x + dx][ y + dy] == -self.move:
-                if self.check_table_first(self,x,y) == True :
-                    x += dx
-                    y += dy
-                    length += 1
-                    if self.table[ x + dx][ y + dy] == -self.move:
-                        continue
+        if self.check_table_first(x+dx,y+dy):         
+            if self.table[ x + dx][ y + dy] == -self.move:#一方の石である時 true
+                while self.table[ x + dx][ y + dy] == -self.move:#黒なら白
+                    #print(F"self.table[{x + dx}][{y + dy}]>>{self.table[x + dx][y + dy]}")
+                    if self.check_table_first(x,y) == True :
+                        x += dx
+                        y += dy
+                        length += 1
+                        if self.table[ x + dx][ y + dy] == -self.move:
+                            continue
+                        elif self.table[ x + dx][ y + dy] == 0 :
+                            return False
+                        else:
+                            return length
                     else:
-                        return length,dx,dy
-                else:
-                    return False,dx,dy  
+                        return False  
+            else:
+                return False
         else:
-            return False,dx,dy
-    
+            return False
+    #➀ Total
     def check_table_all(self,x,y):
-        if self.check_table_first(self,x,y) == False:
+        if self.check_table_first(x,y) == False:
             return False
-        elif self.check_table_second(self,x,y) == False:
+        elif self.check_table_second(x,y) == False:
             return False
-        elif self.check_table_third(self,x,y)[0] == False:
+        elif self.check_table_third(x,y) == False:
             return False
         else:
             return True
             
-    
+    #反転
     def reverse_stone(self,x,y):
-        length,dx,dy = self.check_table_third(self,x,y)
+        for dx in (-1,0,1):#-1,0,1
+            for dy in (-1,0,1): 
+                #print(F"dx>>{dx},dy>>{dy}")
+                length =  self.reverse_judge(x,y,dx,dy)
+                if length == None:
+                    length = 0
+                if length > 0:
+                    for l in range(length):
+                        k = l+1
+                        self.table[x+dx*k][y+dy*k] *= -1
+    #表示  
+    def display(self):
+        print("==="*10)
+        print(self.table)
+                   
         
-        if abs(dx-x) > 0 and abs(dy-y) > 0:
-            for i in range(abs(dx-x)):
-                for j in range(abs(dy-y)):
-                    self.table[i][j] *= -1
-        
-        if abs(dx-x) > 0 or abs(dy-y) > 0:
-            if abs(dx-x) > 0: #abs(dy-y) = 0:
-                
-            elif abs(dy-y) > 0: #abs(dx-x) = 0:
-                
-        
-        
-        
-        
+    #石を置く    
     def put_a_stone(self,x,y):
-        if self.check_table_all(self,x,y) == True:
+        if self.check_table_all(x,y) : #== True
             self.table[x][y] = self.move
-            
-            
-    
-    
-    
-def main():    
-    board = Board()
+            self.turn += 1
+            self.reverse_stone(x,y)
+            self.change()
+            return True
+        else:
+            return False
+#main    
+def main():
+    while (Board.turn <= 64):
+        Board.display()
+        x = int(input("x>>"))
+        y = int(input("y>>"))
+        Board.put_a_stone(y,x)#逆だった
 
 if __name__ == '__main__':
+    Board = Board()
     main()
      
 
